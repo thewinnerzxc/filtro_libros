@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>MS Books — Netlify + OneDrive (CSV manager)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>MS Books — Netlify + OneDrive</h1>
+  <p class="muted" style="margin-top:-6px;margin-bottom:10px">
+    Frontend estático (Netlify) + datos en <code>books.csv</code> dentro de una carpeta sincronizada por OneDrive.
+  </p>
+
+  <div class="bar">
+    <!-- === Buscadores mutuamente excluyentes === -->
+    <div class="input-group">
+      <input id="q" placeholder="Búsqueda A: título o palabras clave…">
+      <button id="clearQ" class="btn-clear" title="Limpiar">×</button>
+    </div>
+
+    <div class="input-group">
+      <input id="q2" placeholder="Búsqueda B (exclusiva)…">
+      <button id="clearQ2" class="btn-clear" title="Limpiar">×</button>
+    </div>
+    <!-- ======================================== -->
+
+    <select id="per">
+      <option value="7" selected>7</option>
+      <option value="10">10</option>
+      <option value="20">20</option>
+    </select>
+
+    <button id="addQuick" class="btn">Agregar a tabla (Ctrl+S)</button>
+    <button id="addDialog" class="btn">Agregar con notas</button>
+    <button id="bulkBtn"   class="btn">Bulk add</button>
+
+    <button id="downCSV"       class="btn">Descargar CSV local</button>
+    <button id="btnImportJSON" class="btn">Importar JSON</button>
+
+    <!-- === Botones para carpeta (OneDrive) === -->
+    <button id="chooseFolder"  class="btn">Elegir carpeta (OneDrive)</button>
+    <button id="btnReconnect"  class="btn">Reconectar carpeta</button>
+    <button id="saveFolderBtn" class="btn">Guardar a carpeta (CSV/JSON)</button>
+    <!-- ======================================= -->
+
+    <button id="resetLocal"    class="btn">Reset autosave</button>
+
+    <a id="openMainDB"
+      class="btn btn-red subtle"
+      href="https://1drv.ms/x/c/a9c4c896060456f5/EfY9jhd2mxdKvBinN5IRa0wBhfQ_33xhduMEvE8b8D6JVQ?e=EYh9DH"
+      target="_blank" rel="noopener noreferrer"
+      title="Abrir base de datos principal en una nueva pestaña">
+      INICIO - CONSULTA GENERAL - libro123
+    </a>
+  </div>
+
+  <div class="meta">
+    <span id="info" class="sp">
+      Para máximo rendimiento: abre este sitio en <b>HTTPS</b> (Netlify) y elige una carpeta de <b>OneDrive</b> donde viva <code>books.csv</code>.
+    </span>
+    <span id="sugg" class="muted"></span>
+    <span id="folderStatus"  class="badge status-bad">Carpeta: —</span>
+    <span id="datasetStatus" class="badge status-bad">Dataset: —</span>
+  </div>
+
+  <!-- === NUEVO: layout en dos columnas === -->
+  <div class="main">
+    <!-- Columna izquierda: filtro/resultados -->
+    <section class="left">
+      <ul id="list"></ul>
+      <div class="pager">
+        <button id="prev" disabled>Prev</button>
+        <span id="page">1</span>
+        <button id="next" disabled>Next</button>
+      </div>
+    </section>
+
+    <!-- Columna derecha: tabla -->
+    <section class="right">
+      <div class="card">
+        <div class="toolbar">
+          <strong>Tabla de libros</strong>
+          <input id="tblQ" placeholder="🔎 Buscar en tabla… (título, notas, URL)" style="min-width:260px" />
+          <button id="clearAll" class="btn">Clear</button>
+          <span class="small" id="tblCount">—</span>
+          <span class="small" style="margin-left:auto;color:#888">
+            Doble clic para editar · seleccionar / copiar / eliminar
+          </span>
+        </div>
+
+        <div class="toolbar" style="gap:.4rem">
+          <button id="copyGreens" class="btn">Copiar verdes</button>
+          <button id="copySelected" class="btn">Copiar seleccionados</button>
+          <button id="deleteSelected" class="btn">Eliminar seleccionados</button>
+        </div>
+
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th><input type="checkbox" id="checkAll"></th>
+              <th>Título</th>
+              <th>Notas</th>
+              <th>File URL</th>
+              <th id="thDate" style="cursor:pointer">Fecha ▼</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Diálogo: agregar -->
+<dialog id="dlgAdd">
+  <div class="dlg">
+    <h3>Agregar libro</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label>Título<br>
+        <input id="fTitle"
+               style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:12px"
+               placeholder="Título del libro o recurso">
+      </label>
+      <label>File URL (opcional)<br>
+        <input id="fURL"
+               style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:12px"
+               placeholder="https://… o ruta local / OneDrive">
+      </label>
+    </div>
+    <label>Notas<br>
+      <textarea id="fNotes" placeholder="Descripción, especialidad, comentarios…"></textarea>
+    </label>
+    <div class="row" style="margin-top:8px">
+      <div></div>
+      <div>
+        <button class="btn" id="cancelAdd">Cancelar</button>
+        <button class="btn-primary" id="saveAdd">Guardar</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Diálogo: bulk -->
+<dialog id="dlgBulk">
+  <div class="dlg">
+    <h3>Bulk add</h3>
+    <p class="muted">
+      1 línea por ítem: <code>Título | Notas | URL</code> o CSV simple.
+      <br>Ejemplo: <code>Harrison Internal Medicine | Core textbook | https://...</code>
+    </p>
+    <textarea id="bulkTxt"
+      placeholder="ECG Made Easy | Intro ECG | https://...&#10;Harrison Internal Medicine, Core textbook&#10;Gray's Anatomy | Atlas | "></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="cancelBulk">Cancelar</button>
+      <button class="btn-primary" id="saveBulk">Importar</button>
+    </div>
+  </div>
+</dialog>
+
+<input id="fileJSON" type="file" accept=".json,application/json" style="display:none">
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -12,7 +12,7 @@ export default function LoginPage() {
         const res = await fetch('/api/auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password }),
+            body: JSON.stringify({ password: password.trim() }),
         });
         if (res.ok) {
             router.push('/');

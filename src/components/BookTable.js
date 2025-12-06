@@ -10,32 +10,12 @@ export default function BookTable({ initialBooks, total, page, limit }) {
     const [selected, setSelected] = useState(new Set());
     const [newIds, setNewIds] = useState(new Set());
 
-    // Highlight new entries
-    useEffect(() => {
-        // Load from session or similar if needed, 
-        // simpler: store newIds in React state if single session is enough.
-        // User wants "Copiar verdes".
-        // We can expose a method to add to newIds from parent.
-    }, []);
-
-    // Listen to custom event for new book? Or lift state.
-    // For simplicity, let's just handle local state here if feasible, 
-    // but "Add" happens in TitleSuggester or Modal siblings.
-    // Better: Use a Context or just reload and check 'isNew' param?
-    // User's legacy code used sessionStorage 'ms_new_ids_v1'.
-    // Let's stick to that for compatibility/persistence across reloads.
-
     useEffect(() => {
         try {
             const stored = JSON.parse(sessionStorage.getItem('new_ids') || '[]');
             setNewIds(new Set(stored));
         } catch { }
     }, []);
-
-    const saveNewIds = (ids) => {
-        sessionStorage.setItem('new_ids', JSON.stringify([...ids]));
-        setNewIds(new Set(ids));
-    };
 
     const toggleSelect = (id) => {
         const next = new Set(selected);
@@ -69,19 +49,6 @@ export default function BookTable({ initialBooks, total, page, limit }) {
         copyTitles(titles);
     };
 
-    const copyNew = () => {
-        // "Verdes" are those in newIds
-        // We need to fetch them? Or assume they are in current view?
-        // Legacy behavior: filter ALL books by newIds. 
-        // Server side pagination makes this tricky.
-        // If we strictly follow legacy: "Copiar verdes" copied from the *loaded* dataset.
-        // With pagination, we see only subset.
-        // If user adds books, they appear in list (sorted by time).
-        // Let's implement copying *visible* new items, or warn if partial.
-        const titles = books.filter(b => newIds.has(b.id)).map(b => b.title);
-        copyTitles(titles);
-    };
-
     const deleteSelectedRows = async () => {
         if (!selected.size) return;
         if (!confirm(`¿Eliminar ${selected.size} libros?`)) return;
@@ -92,20 +59,20 @@ export default function BookTable({ initialBooks, total, page, limit }) {
     };
 
     return (
-        <div className="card glass p-4 rounded mt-4">
+        <div className="card glass p-4 rounded mt-4" style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <div className="toolbar flex gap-2 mb-2" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
                 <div className="flex gap-2 center">
                     <strong>Tabla ({total} total)</strong>
                     <button onClick={() => setSelected(new Set())} className="btn small">Clear Selection</button>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={copyNew} className="btn" style={{ color: '#86efac', borderColor: '#86efac' }}>Copiar verdes</button>
+                    {/* "Copiar verdes" removed as requested */}
                     <button onClick={copySelected} className="btn">Copiar seleccionados</button>
                     <button onClick={deleteSelectedRows} className="btn btn-danger">Eliminar seleccionados</button>
                 </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', flex: 1 }}>
                 <table className="w-full" style={{ borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)' }}>

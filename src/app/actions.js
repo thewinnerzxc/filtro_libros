@@ -7,25 +7,46 @@ export async function getBooks(query = '', limit = 7, page = 1) {
     try {
         const offset = (page - 1) * limit;
         let whereClause = '';
+        // If sorting by relevance, we might need separate order by logic.
+        // Default sort:
+        let orderBy = 'ORDER BY date_added DESC, id DESC';
         const params = [limit, offset];
 
         if (query.trim()) {
             whereClause = 'WHERE ';
             const tokens = query.trim().split(/\s+/);
             const conditions = [];
+
+            // For relevance sorting, simplest robust method in parameterised query 
+            // without dynamic massive SQL construction for scoring is:
+            // Just prioritize checking the FIRST token slightly?
+            // User wants "Orden de coincidencia" (relevance).
+            // Let's use a trick: 
+            // ORDER BY (title ILIKE $3) DESC, (notes ILIKE $3) DESC ... 
+            // We can pick the first token as the "primary" relevance key.
+
             tokens.forEach((token, idx) => {
                 const pLen = params.length;
                 params.push(`%${token}%`);
                 conditions.push(`(title ILIKE $${pLen + 1} OR notes ILIKE $${pLen + 1} OR file_url ILIKE $${pLen + 1})`);
             });
             whereClause += conditions.join(' AND ');
+
+            // Attempt simple relevance:
+            // If we have tokens, let's assume the user typed them in order of importance.
+            // We use the first parameter (which is $3, since $1=limit, $2=offset) for sorting weight.
+            if (tokens.length > 0) {
+                // $3 is the first token.
+                // Sort by: Title contains token (high), Notes contains token (med), URL (low).
+                orderBy = `ORDER BY (CASE WHEN title ILIKE $3 THEN 1 ELSE 0 END) DESC, date_added DESC`;
+            }
         }
 
         const sql = `
       SELECT *, count(*) OVER() as full_count 
       FROM books 
       ${whereClause}
-      ORDER BY date_added DESC, id DESC
+      ${orderBy}
       LIMIT $1 OFFSET $2
     `;
 

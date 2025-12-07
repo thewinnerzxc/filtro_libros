@@ -2,43 +2,44 @@
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
-export async function getBooks(query = '', limit = 7, page = 1) {
+export async function getBooks(query = '', limit = 500, page = 1, sort = 'date_desc') {
     const client = await pool.connect();
     try {
         const offset = (page - 1) * limit;
         let whereClause = '';
-        // If sorting by relevance, we might need separate order by logic.
-        // Default sort:
-        let orderBy = 'ORDER BY date_added DESC, id DESC';
+        let orderBy = '';
         const params = [limit, offset];
 
-        if (query.trim()) {
+        // Sorting Logic
+        switch (sort) {
+            case 'title_asc':
+                orderBy = 'ORDER BY title ASC';
+                break;
+            case 'title_desc':
+                orderBy = 'ORDER BY title DESC';
+                break;
+            case 'date_desc':
+            default:
+                orderBy = 'ORDER BY date_added DESC, id DESC';
+                break;
+        }
+
+        // Filtering Logic (Table Search)
+        if (query && query.trim()) {
             whereClause = 'WHERE ';
-            const tokens = query.trim().split(/\s+/);
+            const tokens = query.trim().split(/[\s_\.\-]+/).filter(Boolean);
             const conditions = [];
 
-            // For relevance sorting, simplest robust method in parameterised query 
-            // without dynamic massive SQL construction for scoring is:
-            // Just prioritize checking the FIRST token slightly?
-            // User wants "Orden de coincidencia" (relevance).
-            // Let's use a trick: 
-            // ORDER BY (title ILIKE $3) DESC, (notes ILIKE $3) DESC ... 
-            // We can pick the first token as the "primary" relevance key.
-
-            tokens.forEach((token, idx) => {
+            // Simple filter: match any token in title/notes/url. No scoring needed for table, just filtering.
+            tokens.forEach((token) => {
                 const pLen = params.length;
                 params.push(`%${token}%`);
                 conditions.push(`(title ILIKE $${pLen + 1} OR notes ILIKE $${pLen + 1} OR file_url ILIKE $${pLen + 1})`);
             });
-            whereClause += conditions.join(' AND ');
 
-            // Attempt simple relevance:
-            // If we have tokens, let's assume the user typed them in order of importance.
-            // We use the first parameter (which is $3, since $1=limit, $2=offset) for sorting weight.
-            if (tokens.length > 0) {
-                // $3 is the first token.
-                // Sort by: Title contains token (high), Notes contains token (med), URL (low).
-                orderBy = `ORDER BY (CASE WHEN title ILIKE $3 THEN 1 ELSE 0 END) DESC, date_added DESC`;
+            if (conditions.length > 0) {
+                // Table filtering: Use AND logic to narrow results (Intersection of all search terms).
+                whereClause += `(${conditions.join(' AND ')})`;
             }
         }
 
@@ -63,6 +64,40 @@ export async function getBooks(query = '', limit = 7, page = 1) {
             })),
             total
         };
+    } finally {
+        client.release();
+    }
+}
+
+export async function searchForSidebar(query) {
+    if (!query || !query.trim()) return [];
+
+    const client = await pool.connect();
+    try {
+        const tokens = query.trim().split(/[\s_\.\-]+/).filter(Boolean);
+        const params = [];
+        const conditions = [];
+        let scoreExpr = '0';
+
+        tokens.forEach((token) => {
+            const pLen = params.length;
+            params.push(`%${token}%`);
+            conditions.push(`(title ILIKE $${pLen + 1} OR notes ILIKE $${pLen + 1} OR file_url ILIKE $${pLen + 1})`);
+
+            const idx = pLen + 1;
+            scoreExpr += ` + (CASE WHEN title ILIKE $${idx} THEN 3 WHEN notes ILIKE $${idx} OR file_url ILIKE $${idx} THEN 1 ELSE 0 END)`;
+        });
+
+        const sql = `
+            SELECT id, title, file_url 
+            FROM books 
+            WHERE ${conditions.join(' OR ')}
+            ORDER BY (${scoreExpr}) DESC, title ASC
+            LIMIT 50
+        `;
+
+        const res = await client.query(sql, params);
+        return res.rows;
     } finally {
         client.release();
     }

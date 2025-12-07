@@ -1,11 +1,20 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cleanTitle } from '@/lib/utils';
 import { addBook } from '@/app/actions';
 
-export default function TitleSuggester() {
-    const [raw, setRaw] = useState('');
-    const [suggestion, setSuggestion] = useState('');
+export default function TitleSuggester({ initialValue = '' }) {
+    const [raw, setRaw] = useState(initialValue);
+    const [suggestion, setSuggestion] = useState(initialValue ? cleanTitle(initialValue) : '');
+    const [showToast, setShowToast] = useState(false);
+
+    // Sync from search query automatically
+    useEffect(() => {
+        if (initialValue) {
+            setRaw(initialValue);
+            setSuggestion(cleanTitle(initialValue));
+        }
+    }, [initialValue]);
 
     const handleInput = (e) => {
         const val = e.target.value;
@@ -16,23 +25,24 @@ export default function TitleSuggester() {
     const copySuggestion = () => {
         if (!suggestion) return;
         navigator.clipboard.writeText(suggestion);
-        alert('Copiado!');
+        setShowToast('Copiado!');
+        setTimeout(() => setShowToast(false), 2000);
     };
 
     const addSuggestion = async () => {
         if (!suggestion) return;
-        // Call server action
+
         const formData = new FormData();
         formData.append('title', suggestion);
         formData.append('notes', '');
         formData.append('file_url', '');
 
-        // Optimistic UI or wait?
         const res = await addBook(formData);
         if (res.success) {
             setRaw('');
             setSuggestion('');
-            alert('Agregado!');
+            setShowToast('Agregado correctamente');
+            setTimeout(() => setShowToast(false), 2000);
         } else {
             alert('Error: ' + res.message);
         }
@@ -45,7 +55,27 @@ export default function TitleSuggester() {
     };
 
     return (
-        <div className="glass p-4 rounded mb-4 flex col gap-2">
+        <div className="glass p-4 rounded mb-4 flex col gap-2" style={{ position: 'relative' }}>
+            {/* Toast Notification */}
+            {showToast && (
+                <div style={{
+                    position: 'absolute',
+                    top: '-40px',
+                    right: '0',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    fontWeight: 'bold',
+                    fontSize: '0.9rem',
+                    animation: 'fadeIn 0.3s ease',
+                    zIndex: 10
+                }}>
+                    {showToast}
+                </div>
+            )}
+
             <h3 className="muted">Sugerencia de Título</h3>
             <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                 <input

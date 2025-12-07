@@ -1,4 +1,4 @@
-import { getBooks } from './actions';
+import { getBooks, searchForSidebar } from './actions';
 import Search from '@/components/Search';
 import TitleSuggester from '@/components/TitleSuggester';
 import BookTable from '@/components/BookTable';
@@ -9,35 +9,55 @@ export const dynamic = 'force-dynamic';
 export default async function Home({ searchParams }) {
     const params = await searchParams;
     const page = parseInt(params.page) || 1;
-    const limit = parseInt(params.limit) || 7;
-    const q = params.q || '';
+    const limit = parseInt(params.limit) || 500;
+    const q = params.q || '';      // Sidebar / Top Search
+    const tq = params.tq || '';    // Table Search
+    const sort = params.sort || 'date_desc';
 
-    const { books, total } = await getBooks(q, limit, page);
+    // Parallel fetch: main table data (using tq) AND sidebar search matches (using q)
+    const booksPromise = getBooks(tq, limit, page, sort);
+    const sidebarPromise = q ? searchForSidebar(q) : Promise.resolve([]);
+
+    const [{ books, total }, sidebarResults] = await Promise.all([booksPromise, sidebarPromise]);
 
     return (
-        <main className="container" style={{ maxWidth: '1800px' }}>
-            <header className="mb-4">
-                <h1>MS Books — Neon + Vercel</h1>
-                <p className="muted">Dashboard de gestión de recursos</p>
+        <main className="container-fluid" style={{ maxWidth: '100vw', padding: '20px', background: 'var(--background)' }}>
+            {/* Header Section */}
+            <header className="flex mb-4 gap-4" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>MS Books — Neon + Vercel</h1>
+                    <p className="muted" style={{ margin: 0 }}>Dashboard de gestión de recursos</p>
+                </div>
             </header>
 
-            <div className="mb-4">
-                <Search />
-            </div>
-
-            <div className="mb-4">
-                <TitleSuggester />
-            </div>
-
-            <div className="flex gap-4" style={{ alignItems: 'flex-start' }}>
-                {q && (
-                    <div style={{ width: '300px', flexShrink: 0 }}>
-                        <ResultsSidebar books={books} />
+            {/* Global Controls */}
+            <div className="card glass p-3 mb-4 rounded">
+                <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
+                    <div style={{ width: '25%', minWidth: '300px' }}>
+                        <Search />
                     </div>
-                )}
+                    {/* Place for specific legacy controls if needed. Currently clean. */}
+                </div>
+                <div className="mt-3">
+                    <TitleSuggester initialValue={q} />
+                </div>
+            </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <BookTable initialBooks={books} total={total} page={page} limit={limit} />
+            {/* Main Content Layout */}
+            <div className="main-layout responsive-layout">
+
+                {/* Left Sidebar - Always visible area, content optional */}
+                <div style={{ height: 'calc(100vh - 250px)', overflow: 'hidden' }}>
+                    {q ? (
+                        <ResultsSidebar results={sidebarResults} />
+                    ) : (
+                        <div className="muted p-4 text-center">Sin búsqueda activa</div>
+                    )}
+                </div>
+
+                {/* Right Content - Table */}
+                <div style={{ minWidth: 0 }}>
+                    <BookTable initialBooks={books} total={total} page={page} limit={limit} currentSort={sort} currentTq={tq} />
                 </div>
             </div>
 

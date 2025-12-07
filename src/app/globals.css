@@ -181,6 +181,29 @@ textarea:focus {
     border-radius: 4px;
 }
 
+
 ::-webkit-scrollbar-thumb:hover {
     background: #475569;
+}
+
+/* Responsive Grid Layout */
+.responsive-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .responsive-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hide-on-mobile {
+        display: none;
+    }
+
+    .container {
+        padding: 1rem;
+    }
 }

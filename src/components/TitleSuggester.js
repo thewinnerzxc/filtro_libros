@@ -10,10 +10,8 @@ export default function TitleSuggester({ initialValue = '' }) {
 
     // Sync from search query automatically
     useEffect(() => {
-        if (initialValue) {
-            setRaw(initialValue);
-            setSuggestion(cleanTitle(initialValue));
-        }
+        setRaw(initialValue);
+        setSuggestion(cleanTitle(initialValue));
     }, [initialValue]);
 
     const handleInput = (e) => {

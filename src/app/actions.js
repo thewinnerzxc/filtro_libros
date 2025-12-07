@@ -45,7 +45,7 @@ export async function getBooks(query = '', limit = 500, page = 1, sort = 'date_d
 
         const sql = `
       SELECT *, 
-             to_char(date_added, 'YYYY-MM-DD"T"HH24:MI:SS') as local_date,
+             to_char(date_added, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as local_date,
              count(*) OVER() as full_count 
       FROM books 
       ${whereClause}

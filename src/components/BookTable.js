@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { deleteBook, updateBook } from '@/app/actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function BookTable({ initialBooks, total, page, limit, currentSort, currentTq }) {
+export default function BookTable({ initialBooks, total, page, limit, currentSort, currentTq, allTitles = [] }) {
     const [books, setBooks] = useState(initialBooks);
     // Sync state with props when data matches (for server updates)
     useEffect(() => { setBooks(initialBooks); }, [initialBooks]);
@@ -173,11 +173,52 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
     };
 
     // Calculate duplicates for current page
-    const titleCounts = {};
-    books.forEach(b => {
-        const t = (b.title || '').toLowerCase().trim();
-        titleCounts[t] = (titleCounts[t] || 0) + 1;
-    });
+    // Calculate duplicates for current page using Global scope
+    // "aunque deberian permanecer marcados todo el tiempo aún si salgo de la funcion de busqueda"
+    // Calculate duplicates for current page using Global scope
+    // "aunque deberian permanecer marcados todo el tiempo aún si salgo de la funcion de busqueda"
+    // "este caso tambien debe considerarse implicado en duplicidad, es decir cuando en lugar de espacio entrre palabras se use algún simbolo"
+    const duplicateIds = useMemo(() => {
+        const ids = new Set();
+
+        // Helper to normalize title for comparison: 
+        // 1. Lowercase 
+        // 2. Replace separators (_, ., -) with spaces 
+        // 3. Collapse multiple spaces -> single space
+        const normalize = (t) => (t || '').toLowerCase().replace(/[_\.-]/g, ' ').replace(/\s+/g, ' ').trim();
+
+        const currentItems = books.map(b => ({
+            id: b.id,
+            title: normalize(b.title)
+        }));
+
+        const allNormalized = allTitles.map(t => ({
+            id: t.id,
+            title: normalize(t.title)
+        }));
+
+        for (let i = 0; i < currentItems.length; i++) {
+            const t1 = currentItems[i].title;
+            const id1 = currentItems[i].id;
+
+            if (!t1) continue;
+
+            for (let j = 0; j < allNormalized.length; j++) {
+                const t2 = allNormalized[j].title;
+                const id2 = allNormalized[j].id;
+
+                if (id1 === id2) continue; // Skip self
+
+                // Check inclusion
+                if (t2.includes(t1)) {
+                    // t1 is inside t2. t1 is duplicate.
+                    ids.add(id1);
+                    ids.add(id2);
+                }
+            }
+        }
+        return ids;
+    }, [books, allTitles]);
 
     return (
         <div className="card glass p-4 rounded mt-4" style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -284,8 +325,7 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
                     <tbody>
                         {books.map((book) => {
                             const isNew = newIds.has(book.id);
-                            const t = (book.title || '').toLowerCase().trim();
-                            const isDuplicate = titleCounts[t] > 1;
+                            const isDuplicate = duplicateIds.has(book.id);
 
                             return (
                                 <tr key={book.id} style={{

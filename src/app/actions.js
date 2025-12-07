@@ -72,6 +72,16 @@ export async function getBooks(query = '', limit = 500, page = 1, sort = 'date_d
     }
 }
 
+export async function getAllTitles() {
+    const client = await pool.connect();
+    try {
+        const res = await client.query('SELECT id, title FROM books');
+        return res.rows;
+    } finally {
+        client.release();
+    }
+}
+
 export async function searchForSidebar(query) {
     if (!query || !query.trim()) return [];
 

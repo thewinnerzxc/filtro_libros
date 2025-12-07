@@ -1,4 +1,4 @@
-import { getBooks, searchForSidebar } from './actions';
+import { getBooks, searchForSidebar, getAllTitles } from './actions';
 import Search from '@/components/Search';
 import TitleSuggester from '@/components/TitleSuggester';
 import BookTable from '@/components/BookTable';
@@ -14,11 +14,12 @@ export default async function Home({ searchParams }) {
     const tq = params.tq || '';    // Table Search
     const sort = params.sort || 'date_desc';
 
-    // Parallel fetch: main table data (using tq) AND sidebar search matches (using q)
+    // Parallel fetch: main table data (using tq) AND sidebar search matches (using q) AND all titles for duplicates
     const booksPromise = getBooks(tq, limit, page, sort);
     const sidebarPromise = q ? searchForSidebar(q) : Promise.resolve([]);
+    const allTitlesPromise = getAllTitles();
 
-    const [{ books, total }, sidebarResults] = await Promise.all([booksPromise, sidebarPromise]);
+    const [{ books, total }, sidebarResults, allTitles] = await Promise.all([booksPromise, sidebarPromise, allTitlesPromise]);
 
     return (
         <main className="container-fluid" style={{ maxWidth: '100vw', padding: '20px', background: 'var(--background)' }}>
@@ -57,7 +58,7 @@ export default async function Home({ searchParams }) {
 
                 {/* Right Content - Table */}
                 <div style={{ minWidth: 0 }}>
-                    <BookTable initialBooks={books} total={total} page={page} limit={limit} currentSort={sort} currentTq={tq} />
+                    <BookTable initialBooks={books} total={total} page={page} limit={limit} currentSort={sort} currentTq={tq} allTitles={allTitles} />
                 </div>
             </div>
 

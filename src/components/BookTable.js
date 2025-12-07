@@ -182,10 +182,20 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
         const ids = new Set();
 
         // Helper to normalize title for comparison: 
-        // 1. Lowercase 
-        // 2. Replace separators (_, ., -) with spaces 
-        // 3. Collapse multiple spaces -> single space
-        const normalize = (t) => (t || '').toLowerCase().replace(/[_\.-]/g, ' ').replace(/\s+/g, ' ').trim();
+        // 1. Remove file extensions (.pdf, .epub, .rar, .zip)
+        // 2. Lowercase 
+        // 3. Replace separators (_, ., -) with spaces 
+        // 4. Collapse multiple spaces -> single space
+        const normalize = (t) => {
+            if (!t) return '';
+            let s = t.toLowerCase();
+            // Remove extensions
+            s = s.replace(/\.(pdf|epub|mobi|azw3|djvu|txt|rtf|docx?|zip|rar|7z)$/i, '');
+            // Replace separators
+            s = s.replace(/[_\.-]/g, ' ');
+            // Collapse spaces
+            return s.replace(/\s+/g, ' ').trim();
+        };
 
         const currentItems = books.map(b => ({
             id: b.id,

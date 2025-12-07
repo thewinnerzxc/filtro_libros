@@ -44,7 +44,9 @@ export async function getBooks(query = '', limit = 500, page = 1, sort = 'date_d
         }
 
         const sql = `
-      SELECT *, count(*) OVER() as full_count 
+      SELECT *, 
+             (date_added AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') as local_date,
+             count(*) OVER() as full_count 
       FROM books 
       ${whereClause}
       ${orderBy}
@@ -60,7 +62,8 @@ export async function getBooks(query = '', limit = 500, page = 1, sort = 'date_d
                 title: r.title,
                 notes: r.notes || '',
                 file_url: r.file_url || '',
-                date_added: r.date_added ? r.date_added.toISOString() : null
+                // date_added will now be the string from DB respecting the timezone
+                date_added: r.local_date ? new Date(r.local_date).toISOString() : null
             })),
             total
         };

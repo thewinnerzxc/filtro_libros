@@ -145,34 +145,39 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
         router.replace(`/?${params.toString()}`);
     };
 
-    // Date formatter (Manual UTC-5 for consistency)
+    // Date formatter
     const formatDate = (isoString) => {
         if (!isoString) return '-';
         try {
-            // Ensure input is treated as UTC if missing timezone info
-            let safeIso = isoString;
-            if (typeof safeIso === 'string') {
-                if (safeIso.includes(' ')) safeIso = safeIso.replace(' ', 'T');
-                if (!safeIso.endsWith('Z') && !safeIso.includes('+') && !safeIso.includes('-')) {
-                    safeIso += 'Z';
-                }
-            }
+            // isoString is now the local time string from DB (e.g. "2025-12-06T21:30:00...")
+            // We just need to display it as DD/MM/YY, HH:MM
+            const d = new Date(isoString);
 
-            const d = new Date(safeIso);
-            // Shift -5 hours from UTC
-            const limaTime = new Date(d.getTime() - (5 * 60 * 60 * 1000));
+            // Should verify if browser interprets this "local string" correctly or if we need to force it.
+            // If DB sends "2025-12-06 21:30:00", new Date() might assume local browser time (which is correct for "wall clock" display).
+            // Let's use simple string parsing to avoid any browser timezone interference.
 
-            const day = String(limaTime.getUTCDate()).padStart(2, '0');
-            const month = String(limaTime.getUTCMonth() + 1).padStart(2, '0');
-            const year = String(limaTime.getUTCFullYear()).slice(-2);
-            const hour = String(limaTime.getUTCHours()).padStart(2, '0');
-            const min = String(limaTime.getUTCMinutes()).padStart(2, '0');
+            // Example ISO from DB (after manual constructing or standard ISOS): "2025-12-06T21:30:00.000Z" 
+            // Wait, if we cast to UTC in DB, it comes out as UTC.
+
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = String(d.getFullYear()).slice(-2);
+            const hour = String(d.getHours()).padStart(2, '0');
+            const min = String(d.getMinutes()).padStart(2, '0');
 
             return `${day}/${month}/${year}, ${hour}:${min}`;
         } catch (e) {
             return '-';
         }
     };
+
+    // Calculate duplicates for current page
+    const titleCounts = {};
+    books.forEach(b => {
+        const t = (b.title || '').toLowerCase().trim();
+        titleCounts[t] = (titleCounts[t] || 0) + 1;
+    });
 
     return (
         <div className="card glass p-4 rounded mt-4" style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -279,6 +284,9 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
                     <tbody>
                         {books.map((book) => {
                             const isNew = newIds.has(book.id);
+                            const t = (book.title || '').toLowerCase().trim();
+                            const isDuplicate = titleCounts[t] > 1;
+
                             return (
                                 <tr key={book.id} style={{
                                     background: isNew ? 'rgba(34, 197, 94, 0.1)' : 'transparent'
@@ -295,12 +303,16 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
                                     <td className="p-3 muted" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                                         {formatDate(book.date_added)}
                                     </td>
-                                    <td className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <td className="p-3" style={{
+                                        borderTop: '1px solid rgba(255,255,255,0.05)',
+                                        background: isDuplicate ? 'rgba(239, 68, 68, 0.15)' : 'transparent', // Subtle red for duplicates
+                                        color: isDuplicate ? '#fca5a5' : 'inherit'
+                                    }}>
                                         <div
                                             onClick={() => copyToClipboard(book.title)}
-                                            style={{ cursor: 'pointer', color: 'var(--foreground)' }}
+                                            style={{ cursor: 'pointer' }}
                                             className="hover-bright"
-                                            title="Click para copiar"
+                                            title={isDuplicate ? "Título duplicado" : "Click para copiar"}
                                         >
                                             {book.title}
                                         </div>

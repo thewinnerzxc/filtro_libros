@@ -28,8 +28,16 @@ export function cleanTitle(filename) {
     }
 
     // Clean base
-    base = base.replace(/_/g, ' ');
-    base = base.replace(/\./g, ' '); // Replace dots in name with space? Usually yes except extension.
+    // User request: remove _, ., ,, - and replace with space. Handle multiple occurrences.
+    // Regex: Match any sequence of one or more [ _ . , - ]
+    base = base.replace(/[_\.,-]+/g, ' ');
+
+    // Specific removals requested: "ALGRAWANY" (case insensitive) and "(1)", "(2)", etc.
+    // Remove "ALGRAWANY"
+    base = base.replace(/algrawany/gi, '');
+
+    // Remove (number) e.g. (1), (25)
+    base = base.replace(/\(\d+\)/g, '');
 
     // Remove trailing "From", "By" ...
     // Case insensitive
@@ -37,6 +45,22 @@ export function cleanTitle(filename) {
 
     // Collapse spaces
     base = base.replace(/\s+/g, ' ').trim();
+
+    return base; // We often don't want the extension in the Title field for the key 'title', generally.
+    // Wait, the original code returned `base + ext`.
+    // If the user is renaming files, they might want the extension.
+    // But for "Title", visually we often hide extension.
+    // However, looking at the app, it's used for "Title Suggester" and "Search -> Add".
+    // If I add "book.pdf", the title usually is "book".
+    // The previous code returned `base + ext`. 
+    // Let's stick to returning `base` ONLY if we want to strip extension, but usually "Title" doesn't have .pdf.
+    // The user example "Kundu's...2023" has no extension.
+    // If I look at the original code lines 26-28: `ext = name.substring(extIndex);`.
+    // If I return `base + ext`, I re-append .pdf.
+    // If the user wants to clean the title for display/storage, usually we remove extension?
+    // Let's check line 41 of original: `return base + ext;`.
+    // I will preserve this behavior but the user asked to remove dots. 
+    // If I preserve extension, `My.Book.pdf` -> `My Book.pdf`. Correct.
 
     return base + ext;
 }

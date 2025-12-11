@@ -1,6 +1,5 @@
 import { getBooks, searchForSidebar, getAllTitles } from './actions';
-import Search from '@/components/Search';
-import TitleSuggester from '@/components/TitleSuggester';
+import SearchSection from '@/components/SearchSection';
 import BookTable from '@/components/BookTable';
 import ResultsSidebar from '@/components/ResultsSidebar';
 
@@ -32,17 +31,7 @@ export default async function Home({ searchParams }) {
             </header>
 
             {/* Global Controls */}
-            <div className="card glass p-3 mb-4 rounded">
-                <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
-                    <div style={{ width: '25%', minWidth: '300px' }}>
-                        <Search />
-                    </div>
-                    {/* Place for specific legacy controls if needed. Currently clean. */}
-                </div>
-                <div className="mt-3">
-                    <TitleSuggester initialValue={q} />
-                </div>
-            </div>
+            <SearchSection initialQuery={q} />
 
             {/* Main Content Layout */}
             <div className="main-layout responsive-layout">

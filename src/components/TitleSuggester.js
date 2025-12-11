@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { cleanTitle } from '@/lib/utils';
 import { addBook } from '@/app/actions';
 
-export default function TitleSuggester({ initialValue = '' }) {
+export default function TitleSuggester({ initialValue = '', tags = [] }) {
     const [raw, setRaw] = useState(initialValue);
     const [suggestion, setSuggestion] = useState(initialValue ? cleanTitle(initialValue) : '');
     const [showToast, setShowToast] = useState(false);
@@ -32,7 +32,7 @@ export default function TitleSuggester({ initialValue = '' }) {
 
         const formData = new FormData();
         formData.append('title', suggestion);
-        formData.append('notes', '');
+        formData.append('notes', tags.length > 0 ? tags.join(', ') : '');
         formData.append('file_url', '');
 
         const res = await addBook(formData);

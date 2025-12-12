@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addBook } from '@/app/actions';
 import { cleanTitle } from '@/lib/utils';
@@ -67,13 +67,14 @@ export default function Search({ tags, setTags }) {
         }
     };
 
+    const inputRef = useRef(null);
+
     const handlePaste = async () => {
         try {
             const text = await navigator.clipboard.readText();
             if (text) {
                 setTerm(text);
-                // Optionally submit or just set the term. User just asked to "paste".
-                // I will just set the term for now to let them edit if needed.
+                setTimeout(() => inputRef.current?.focus(), 0);
             }
         } catch (err) {
             console.error('Failed to read clipboard', err);
@@ -125,6 +126,7 @@ export default function Search({ tags, setTags }) {
             </button>
 
             <input
+                ref={inputRef}
                 className="input"
                 placeholder="Búsqueda: título, notas, URL..."
                 value={term}

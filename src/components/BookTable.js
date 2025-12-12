@@ -314,12 +314,12 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
                 <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
                     <thead>
                         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)' }}>
-                            <th className="p-3">#</th>
-                            <th className="p-3"><input type="checkbox" onChange={(e) => {
+                            <th className="p-3" style={{ paddingRight: '30px' }}>#</th>
+                            <th className="p-3" style={{ paddingRight: '30px' }}><input type="checkbox" onChange={(e) => {
                                 if (e.target.checked) setSelected(new Set(books.map(b => b.id)));
                                 else setSelected(new Set());
                             }} /></th>
-                            <th className="p-3">Fecha</th>
+                            <th className="p-3" style={{ paddingRight: '30px' }}>Fecha</th>
                             <th
                                 className="p-3"
                                 style={{ cursor: 'pointer', userSelect: 'none', textDecoration: 'underline' }}
@@ -341,8 +341,8 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
                                 <tr key={book.id} style={{
                                     background: isNew ? 'rgba(34, 197, 94, 0.1)' : 'transparent'
                                 }}>
-                                    <td className="p-3 muted" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>{book.id}</td>
-                                    <td className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <td className="p-3 muted" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingRight: '30px' }}>{book.id}</td>
+                                    <td className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingRight: '30px' }}>
                                         <input
                                             type="checkbox"
                                             checked={selected.has(book.id)}
@@ -350,7 +350,7 @@ export default function BookTable({ initialBooks, total, page, limit, currentSor
                                             readOnly // handled by onClick, readonly for react strictness (although onClick prevents actual toggle without set)
                                         />
                                     </td>
-                                    <td className="p-3 muted" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <td className="p-3 muted" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', borderTop: '1px solid rgba(255,255,255,0.05)', paddingRight: '30px' }}>
                                         {formatDate(book.date_added)}
                                     </td>
                                     <td className="p-3" style={{

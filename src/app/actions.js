@@ -1,6 +1,11 @@
 'use server';
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import fs from 'fs';
+import path from 'path';
+
+// Target Directory for Sync
+const TARGET_DIR = 'C:\\Users\\vacue\\OneDrive\\medicalstrike.com\\LIBROS SELECCIONADOS FINAL';
 
 export async function getBooks(query = '', limit = 500, page = 1, sort = 'date_desc') {
     const client = await pool.connect();
@@ -102,7 +107,7 @@ export async function searchForSidebar(query) {
         });
 
         const sql = `
-            SELECT id, title, file_url 
+            SELECT id, title, file_url, notes 
             FROM books 
             WHERE ${conditions.join(' OR ')}
             ORDER BY (${scoreExpr}) DESC, title ASC
@@ -195,6 +200,73 @@ export async function bulkAdd(text) {
                 }
             }
         }
+        await client.query('COMMIT');
+        revalidatePath('/');
+        return { success: true, count: added };
+    } catch (e) {
+        await client.query('ROLLBACK');
+        return { success: false, message: e.message };
+    } finally {
+        client.release();
+    }
+}
+
+
+function getAllFiles(dirPath, arrayOfFiles) {
+    if (!fs.existsSync(dirPath)) return [];
+    const files = fs.readdirSync(dirPath);
+    arrayOfFiles = arrayOfFiles || [];
+
+    files.forEach(function (file) {
+        if (fs.statSync(dirPath + "/" + file).isDirectory()) {
+            arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles);
+        } else {
+            if (!file.match(/^(\.|Thumbs\.db|desktop\.ini)/i)) {
+                arrayOfFiles.push(path.join(dirPath, "/", file));
+            }
+        }
+    });
+
+    return arrayOfFiles;
+}
+
+export async function syncLibrary() {
+    const client = await pool.connect();
+    let added = 0;
+    try {
+        if (!fs.existsSync(TARGET_DIR)) {
+            return { success: false, message: 'Directory not found (Server)' };
+        }
+
+        const files = getAllFiles(TARGET_DIR);
+        await client.query('BEGIN');
+
+        // Optimize: Get all existing TITLES in a Set to prevent duplicates by name
+        // User requested: "es decir los titulos que ya esta en el historial no se debe modificar"
+        const existingRes = await client.query('SELECT title FROM books');
+        const existingTitles = new Set(existingRes.rows.map(r => r.title));
+
+        for (const filePath of files) {
+            const fileName = path.basename(filePath);
+
+            // Check if Title (Filename) already exists
+            if (!existingTitles.has(fileName)) {
+                const folderPath = path.dirname(filePath);
+
+                // Simplify location as requested: "\LIBROS SELECCIONADOS FINAL..."
+                // Remove the prefix "C:\Users\vacue\OneDrive\medicalstrike.com"
+                const cleanLocation = folderPath.replace('C:\\Users\\vacue\\OneDrive\\medicalstrike.com', '');
+
+                await client.query(
+                    'INSERT INTO books (title, notes, file_url) VALUES ($1, $2, $3)',
+                    [fileName, cleanLocation, filePath]
+                );
+                added++;
+                // Add to set to prevent duplicates within the same batch import
+                existingTitles.add(fileName);
+            }
+        }
+
         await client.query('COMMIT');
         revalidatePath('/');
         return { success: true, count: added };

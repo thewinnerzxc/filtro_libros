@@ -68,7 +68,7 @@ export default function ResultsSidebar({ results = [] }) {
                         </div>
                         {/* Optional: Show file_url if distinct? */}
                         <div style={{ fontSize: '0.75rem', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {b.file_url}
+                            {b.notes}
                         </div>
                     </div>
                 ))}
